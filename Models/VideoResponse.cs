@@ -1,4 +1,4 @@
-﻿namespace VimeoDownloader
+﻿namespace VimeoDownloader.Models
 {
     internal class VideoResponse
     {

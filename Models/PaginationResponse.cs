@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace VimeoDownloader
+﻿namespace VimeoDownloader.Models
 {
     internal class PaginationResponse<T>
     {
