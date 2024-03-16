@@ -1,15 +1,25 @@
-﻿using VimeoDownloader.Services;
+﻿using VimeoDownloader.Models;
+using VimeoDownloader.Services;
 
 // Configure these values as needed
-string apiKey = "<Replace Me>";
-string userId = "<Replace Me>";
-string downloadPath = $"VimeoDownload-{DateTime.Now:yyyy-MM-dd_hh-mm-ss}";
+string vimeoApiKey = "<Replace Me>";
+string googleClientSecretFile = "<Replace Me>";
+string vimeoUserId = "<Replace Me>";
+string googleDriveFolderId = "<Replace Me>";
 
 try
 {
-    VimeoDownloaderService vimeoDownloaderService = new(userId, apiKey, downloadPath);
+    VimeoDownloaderService vimeoDownloaderService = new(vimeoApiKey, vimeoUserId);
 
-    bool success = await vimeoDownloaderService.StartDownloadProcess();
+    VideoList? vidoes = await vimeoDownloaderService.GetVideosToDownload();
+
+    if (vidoes == null)
+    {
+        return;
+    }
+
+    GoogleDriveUploadService googleDriveUploadService = new(googleClientSecretFile, googleDriveFolderId, vimeoDownloaderService.client);
+    await googleDriveUploadService.StartUploadProcess(vidoes);
 }
 catch (Exception e)
 {

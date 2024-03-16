@@ -1,17 +1,15 @@
-﻿using System.Diagnostics;
-using System.Text.Json;
+﻿using System.Text.Json;
 using VimeoDownloader.Models;
 
 namespace VimeoDownloader.Services
 {
     internal class VimeoDownloaderService
     {
-        private readonly HttpClient client;
+        public readonly HttpClient client;
         private readonly JsonSerializerOptions jsonOptions;
         private readonly string userId;
-        private readonly string downloadPath;
 
-        public VimeoDownloaderService(string userId, string apiKey, string downloadPath)
+        public VimeoDownloaderService(string apiKey, string userId)
         {
             client = new HttpClient();
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
@@ -19,17 +17,16 @@ namespace VimeoDownloader.Services
             jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
             this.userId = userId;
-            this.downloadPath = downloadPath;
         }
 
-        public async Task<bool> StartDownloadProcess()
+        public async Task<VideoList?> GetVideosToDownload()
         {
             // Get list of folders and select one
             List<FoldersResponse>? folders = await GetFolders();
 
             if (folders == null)
             {
-                return false;
+                return null;
             }
 
             FoldersResponse selectedFolder = SelectFolder(folders);
@@ -39,47 +36,17 @@ namespace VimeoDownloader.Services
 
             if (videos == null)
             {
-                return false;
+                return null;
             }
 
             (string, long) size = SelectSize(videos);
 
-            // Download each video
-            Directory.CreateDirectory(downloadPath);
-            await DownloadVideos(videos, int.Parse(size.Item1.TrimEnd('p')), size.Item2, downloadPath);
-            return true;
-        }
+            int rendition = int.Parse(size.Item1.TrimEnd('p'));
 
-        private async Task DownloadVideos(List<VideoResponse> videos, int rendition, long totalSize, string downloadPath)
-        {
-            Console.WriteLine($"Downloading videos...");
+            List<VideoItem> videoItems = [];
 
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            long sizeSoFar = 0;
-
-            for (int i = 0; i < videos.Count; i++)
+            foreach (VideoResponse video in videos)
             {
-                string message = $"Downloading video {i + 1} out of {videos.Count}";
-
-                if (i > 0)
-                {
-                    double ratio = (double)totalSize / sizeSoFar;
-                    double secondsSoFar = stopwatch.Elapsed.TotalSeconds;
-                    double totalSeconds = ratio * secondsSoFar;
-
-                    // https://stackoverflow.com/a/9994060
-                    TimeSpan t = TimeSpan.FromSeconds(totalSeconds - secondsSoFar);
-                    string formattedTime = string.Format("{0:D2}h:{1:D2}m:{2:D2}s",
-                                            t.Hours,
-                                            t.Minutes,
-                                            t.Seconds);
-
-                    message += $". Estimated time remaining {formattedTime}";
-                }
-
-                Console.WriteLine($"{message}...");
-
-                VideoResponse video = videos[i];
                 Download? match = video.Download.FirstOrDefault(d => rendition == int.Parse(d.Rendition?.TrimEnd('p') ?? "0"));
 
                 if (match == null)
@@ -90,19 +57,22 @@ namespace VimeoDownloader.Services
 
                 DateTime createdDate = DateTime.Parse(video.CreatedTime!);
 
-                // https://stackoverflow.com/a/70418747
-                Stream responseStream = await client.GetStreamAsync(match!.Link);
-                string fileName = MakeValidFileName($"{createdDate:yyyy-MM-dd_hh-mm-ss}-{video.Name}.mp4");
-                string filePath = $"{downloadPath}\\{fileName}";
-                using FileStream fileStream = new(filePath, FileMode.Create);
-                responseStream.CopyTo(fileStream);
-
-                sizeSoFar += (long)match.Size!;
+                videoItems.Add(new()
+                {
+                    DownloadLink = match!.Link,
+                    FileName = MakeValidFileName($"{createdDate:yyyy-MM-dd_hh-mm-ss}-{video.Name}.mp4"),
+                    Size = (long)match.Size!
+                });
             }
 
-            stopwatch.Stop();
+            // Download each video
+            VideoList response = new()
+            {
+                VideoItems = videoItems,
+                Size = size.Item2
+            };
 
-            Console.WriteLine("Finished Downloading all videos.");
+            return response;
         }
 
         private async Task<List<VideoResponse>?> GetVideos(string? folderURI)
