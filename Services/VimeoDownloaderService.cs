@@ -48,9 +48,9 @@ namespace VimeoDownloader.Services
             Directory.CreateDirectory(downloadPath);
             await DownloadVideos(videos, int.Parse(size.Item1.TrimEnd('p')), size.Item2, downloadPath);
             return true;
-        } 
+        }
 
-        async Task DownloadVideos(List<VideoResponse> videos, int rendition, long totalSize, string downloadPath)
+        private async Task DownloadVideos(List<VideoResponse> videos, int rendition, long totalSize, string downloadPath)
         {
             Console.WriteLine($"Downloading videos...");
 
@@ -94,7 +94,7 @@ namespace VimeoDownloader.Services
                 Stream responseStream = await client.GetStreamAsync(match!.Link);
                 string fileName = MakeValidFileName($"{createdDate:yyyy-MM-dd_hh-mm-ss}-{video.Name}.mp4");
                 string filePath = $"{downloadPath}\\{fileName}";
-                using var fileStream = new FileStream(filePath, FileMode.Create);
+                using FileStream fileStream = new(filePath, FileMode.Create);
                 responseStream.CopyTo(fileStream);
 
                 sizeSoFar += (long)match.Size!;
@@ -105,7 +105,7 @@ namespace VimeoDownloader.Services
             Console.WriteLine("Finished Downloading all videos.");
         }
 
-        async Task<List<VideoResponse>?> GetVideos(string? folderURI)
+        private async Task<List<VideoResponse>?> GetVideos(string? folderURI)
         {
             Console.WriteLine("Fetching list of videos...");
             string videosUrl = $"https://api.vimeo.com{folderURI}/videos?sort=date&direction=desc&fields=name,created_time,download.link,download.rendition,download.size";
@@ -127,7 +127,7 @@ namespace VimeoDownloader.Services
             return videos;
         }
 
-        static (string, long) SelectSize(List<VideoResponse> videos)
+        private static (string, long) SelectSize(List<VideoResponse> videos)
         {
             List<string> sizes = videos.SelectMany(v => v.Download).Where(d => d.Rendition != null).Select(d => d.Rendition!).Distinct().OrderBy(s => int.Parse(s.TrimEnd('p'))).ToList();
 
@@ -202,7 +202,7 @@ namespace VimeoDownloader.Services
             return (selectedSize, downloadSizes[sizeInput - 1]);
         }
 
-        async Task<List<FoldersResponse>?> GetFolders()
+        private async Task<List<FoldersResponse>?> GetFolders()
         {
             Console.WriteLine("Fetching list of folders...");
             string foldersUrl = $"https://api.vimeo.com/users/{userId}/folders?sort=name&direction=asc&fields=name,uri";
@@ -222,7 +222,7 @@ namespace VimeoDownloader.Services
             return folders;
         }
 
-        static FoldersResponse SelectFolder(List<FoldersResponse> folders)
+        private static FoldersResponse SelectFolder(List<FoldersResponse> folders)
         {
             Console.WriteLine("Select a folder to download:");
 
@@ -269,7 +269,7 @@ namespace VimeoDownloader.Services
             return selectedFolder;
         }
 
-        async Task<List<T>?> GetAllDataFromPages<T>(string url)
+        private async Task<List<T>?> GetAllDataFromPages<T>(string url)
         {
             List<T> list = [];
 
@@ -299,7 +299,7 @@ namespace VimeoDownloader.Services
             return list;
         }
 
-        async Task<PaginationResponse<T>?> GetPageOfData<T>(string url)
+        private async Task<PaginationResponse<T>?> GetPageOfData<T>(string url)
         {
             HttpResponseMessage response = await client.GetAsync(url);
             string json = await response.Content.ReadAsStringAsync();
@@ -320,19 +320,22 @@ namespace VimeoDownloader.Services
             return responseContent;
         }
 
-        static string BytesToString(long byteCount)
+        private static string BytesToString(long byteCount)
         {
             // https://stackoverflow.com/a/281679
             string[] suf = ["B", "KB", "MB", "GB", "TB", "PB", "EB"]; //Longs run out around EB
             if (byteCount == 0)
+            {
                 return "0" + suf[0];
+            }
+
             long bytes = Math.Abs(byteCount);
             int place = Convert.ToInt32(Math.Floor(Math.Log(bytes, 1024)));
             double num = Math.Round(bytes / Math.Pow(1024, place), 1);
-            return string.Format("{0,5:###.0}", (Math.Sign(byteCount) * num)) + suf[place];
+            return string.Format("{0,5:###.0}", Math.Sign(byteCount) * num) + suf[place];
         }
 
-        static string MakeValidFileName(string name)
+        private static string MakeValidFileName(string name)
         {
             // https://stackoverflow.com/a/847251
             string invalidChars = System.Text.RegularExpressions.Regex.Escape(new string(System.IO.Path.GetInvalidFileNameChars()));
@@ -341,7 +344,7 @@ namespace VimeoDownloader.Services
             return System.Text.RegularExpressions.Regex.Replace(name, invalidRegStr, "_");
         }
 
-        static int GetMagnitudeOfNumber(int number)
+        private static int GetMagnitudeOfNumber(int number)
         {
             // https://stackoverflow.com/a/6865024
             return (int)(Math.Log10(Math.Max(Math.Abs(number), 0.5)) + 1);
