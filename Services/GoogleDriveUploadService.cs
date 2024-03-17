@@ -104,7 +104,8 @@ namespace VimeoDownloader.Services
             stopwatch.Stop();
             // https://stackoverflow.com/a/9994060
             TimeSpan totalT = TimeSpan.FromSeconds(stopwatch.Elapsed.TotalSeconds);
-            string formattedTotalTime = string.Format("{0:D2}h:{1:D2}m:{2:D2}s",
+            string formattedTotalTime = string.Format("{0:D2}d:{0:D2}h:{1:D2}m:{2:D2}s",
+                                    totalT.Days,
                                     totalT.Hours,
                                     totalT.Minutes,
                                     totalT.Seconds);
