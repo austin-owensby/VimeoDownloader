@@ -57,7 +57,7 @@ namespace VimeoDownloader.Services
             {
                 VideoItem video = videos.VideoItems[i];
 
-                string message = $"Downloading video '{video.FileName}' {i + 1} out of {videos.VideoItems.Count}";
+                string message = $"{DateTime.Now} Downloading video '{video.FileName}' {BytesToString(video.Size)} {i + 1} out of {videos.VideoItems.Count}";
 
                 if (i > 0)
                 {
@@ -67,7 +67,8 @@ namespace VimeoDownloader.Services
 
                     // https://stackoverflow.com/a/9994060
                     TimeSpan t = TimeSpan.FromSeconds(totalSeconds - secondsSoFar);
-                    string formattedTime = string.Format("{0:D2}h:{1:D2}m:{2:D2}s",
+                    string formattedTime = string.Format("{0:D2}d:{0:D2}h:{1:D2}m:{2:D2}s",
+                                            t.Days,
                                             t.Hours,
                                             t.Minutes,
                                             t.Seconds);
@@ -79,33 +80,25 @@ namespace VimeoDownloader.Services
 
                 // https://stackoverflow.com/a/70418747
                 Stream responseStream = await client.GetStreamAsync(video.DownloadLink);
-                using (FileStream fileStream = new(video.FileName!, FileMode.Create))
+
+                Google.Apis.Drive.v3.Data.File fileMetadata = new()
                 {
+                    Name = video.FileName!,
+                    Parents = [folderId]
+                };
+                FilesResource.CreateMediaUpload request;
+                request = driveService!.Files.Create(fileMetadata, responseStream, "application/octet-stream");
+                request.Fields = "id";
+                request.SupportsAllDrives = true;
+                IUploadProgress uploadProgress = await request.UploadAsync();
 
-                    Console.WriteLine("Uploading video...");
-
-                    Google.Apis.Drive.v3.Data.File fileMetadata = new()
-                    {
-                        Name = video.FileName!,
-                        Parents = [folderId]
-                    };
-                    FilesResource.CreateMediaUpload request;
-                    request = driveService!.Files.Create(fileMetadata, responseStream, "application/octet-stream");
-                    request.Fields = "id";
-                    request.SupportsAllDrives = true;
-                    IUploadProgress uploadProgress = await request.UploadAsync();
-
-                    if (uploadProgress.Status == UploadStatus.Failed)
-                    {
-                        Console.WriteLine($"Error uploading video {uploadProgress.Exception}");
-                        return;
-                    }
-
-                    sizeSoFar += video.Size;
+                if (uploadProgress.Status == UploadStatus.Failed)
+                {
+                    Console.WriteLine($"Error uploading video {uploadProgress.Exception}");
+                    return;
                 }
 
-                // Clean up the file now that it's uploaded
-                File.Delete(video.FileName!);
+                sizeSoFar += video.Size;
             }
 
             stopwatch.Stop();
@@ -119,5 +112,20 @@ namespace VimeoDownloader.Services
 
             Console.WriteLine("Finished Uploading all videos.");
         }
+        private static string BytesToString(long byteCount)
+        {
+            // https://stackoverflow.com/a/281679
+            string[] suf = ["B", "KB", "MB", "GB", "TB", "PB", "EB"]; //Longs run out around EB
+            if (byteCount == 0)
+            {
+                return "0" + suf[0];
+            }
+
+            long bytes = Math.Abs(byteCount);
+            int place = Convert.ToInt32(Math.Floor(Math.Log(bytes, 1024)));
+            double num = Math.Round(bytes / Math.Pow(1024, place), 1);
+            return string.Format("{0,5:###.0}", Math.Sign(byteCount) * num) + suf[place];
+        }
+
     }
 }
