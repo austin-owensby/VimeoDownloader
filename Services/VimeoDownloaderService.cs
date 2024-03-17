@@ -19,7 +19,7 @@ namespace VimeoDownloader.Services
             this.userId = userId;
         }
 
-        public async Task<VideoList?> GetVideosToDownload()
+        public async Task<VideoList?> GetVideosToDownload(int offset)
         {
             // Get list of folders and select one
             List<FoldersResponse>? folders = await GetFolders();
@@ -32,7 +32,7 @@ namespace VimeoDownloader.Services
             FoldersResponse selectedFolder = SelectFolder(folders);
 
             // Fetch the list of videos and select a video size
-            List<VideoResponse>? videos = await GetVideos(selectedFolder.URI);
+            List<VideoResponse>? videos = await GetVideos(selectedFolder.URI, offset);
 
             if (videos == null)
             {
@@ -75,7 +75,7 @@ namespace VimeoDownloader.Services
             return response;
         }
 
-        private async Task<List<VideoResponse>?> GetVideos(string? folderURI)
+        private async Task<List<VideoResponse>?> GetVideos(string? folderURI, int offset)
         {
             Console.WriteLine("Fetching list of videos...");
             string videosUrl = $"https://api.vimeo.com{folderURI}/videos?sort=date&direction=desc&fields=name,created_time,download.link,download.rendition,download.size";
@@ -91,6 +91,14 @@ namespace VimeoDownloader.Services
                 Console.WriteLine("No videos found in folder.");
                 return null;
             }
+
+            if (videos.Count <= offset)
+            {
+                Console.WriteLine($"Offset was larger than total number of videos: {videos.Count}");
+                return null;
+            }
+
+            videos = videos.Skip(offset).ToList();
 
             Console.WriteLine($"{videos.Count} videos found.");
 

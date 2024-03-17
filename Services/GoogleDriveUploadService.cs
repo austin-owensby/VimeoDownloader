@@ -67,11 +67,7 @@ namespace VimeoDownloader.Services
 
                     // https://stackoverflow.com/a/9994060
                     TimeSpan t = TimeSpan.FromSeconds(totalSeconds - secondsSoFar);
-                    string formattedTime = string.Format("{0:D2}d:{0:D2}h:{1:D2}m:{2:D2}s",
-                                            t.Days,
-                                            t.Hours,
-                                            t.Minutes,
-                                            t.Seconds);
+                    string formattedTime = string.Format("{0:D2}d:{0:D2}h:{1:D2}m:{2:D2}s", [t.Days, t.Hours, t.Minutes, t.Seconds]);
 
                     message += $". Estimated time remaining {formattedTime}";
                 }
@@ -105,10 +101,7 @@ namespace VimeoDownloader.Services
             // https://stackoverflow.com/a/9994060
             TimeSpan totalT = TimeSpan.FromSeconds(stopwatch.Elapsed.TotalSeconds);
             string formattedTotalTime = string.Format("{0:D2}d:{0:D2}h:{1:D2}m:{2:D2}s",
-                                    totalT.Days,
-                                    totalT.Hours,
-                                    totalT.Minutes,
-                                    totalT.Seconds);
+                                    [totalT.Days, totalT.Hours, totalT.Minutes, totalT.Seconds]);
             Console.WriteLine($"Elapsed time: {formattedTotalTime}");
 
             Console.WriteLine("Finished Uploading all videos.");
